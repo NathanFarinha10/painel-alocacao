@@ -132,9 +132,13 @@ if st.session_state.pagina_selecionada == "Visão Macro (Hub)":
             novos_relatorios = df_visoes.sort_values('data_referencia', ascending=False).drop_duplicates('gestora').head(5)
             for _, row in novos_relatorios.iterrows():
                 # Cada item agora é um botão que chama a função de callback
-                if st.button(f"{row['gestora']} - Outlook {row['data_referencia'].strftime('%b %Y')}", key=row['gestora'], use_container_width=True):
-                    selecionar_gestora_e_navegar(row['gestora'])
-
+                st.button(
+                    f"{row['gestora']} - Outlook {row['data_referencia'].strftime('%b %Y')}",
+                    key=row['gestora'],
+                    use_container_width=True,
+                    on_click=selecionar_gestora_e_navegar,
+                    args=(row['gestora'],) # Passa o nome da gestora para a função
+                )
 # --- PÁGINA 2: ANÁLISE POR ATIVO ---
 elif st.session_state.pagina_selecionada == "Análise por Ativo":
     st.title("🔬 Análise por Ativo")
