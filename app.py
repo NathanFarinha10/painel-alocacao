@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import google.generativeai as genai
+from PyPDF2 import PdfReader
+import json
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -9,94 +12,158 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CARREGAMENTO DOS DADOS ---
+# --- FUNÇÕES ---
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv('dados_mercado.csv')
-    ordem_visoes = ['Overweight', 'Neutral', 'Underweight'] # Simplificado para o exemplo
-    # Usaremos a coluna 'visao' diretamente, o Plotly pode ordenar
     return df
 
+def extrair_texto_pdf(arquivo_pdf):
+    leitor_pdf = PdfReader(arquivo_pdf)
+    texto = ""
+    for pagina in leitor_pdf.pages:
+        texto += pagina.extract_text()
+    return texto
+
+def extrair_visoes_com_ia(texto_relatorio, nome_gestora):
+    # Configurando a API do Google
+    try:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    except Exception as e:
+        st.error("Chave de API do Google não configurada. Por favor, adicione-a nos Segredos (Secrets) do Streamlit.")
+        return None
+
+    # O prompt é a instrução que damos para a IA. É a parte mais importante.
+    prompt = f"""
+    Você é um assistente de análise financeira especializado em ler relatórios de gestoras de ativos.
+    Sua tarefa é extrair as visões de investimento (teses) do texto fornecido.
+
+    Texto do Relatório:
+    ---
+    {texto_relatorio}
+    ---
+
+    Analise o texto acima e retorne uma lista de visões em formato JSON.
+    Cada item na lista deve ser um objeto JSON com os seguintes campos:
+    - "data_referencia": Use a data de hoje no formato AAAA-MM-DD.
+    - "gestora": "{nome_gestora}"
+    - "classe_ativo": A classe de ativo principal (ex: Ações, Renda Fixa, Juros, Moedas).
+    - "sub_classe_ativo": A especificação do ativo (ex: EUA, Europa, Brasil, Global High Grade).
+    - "visao": A visão qualitativa. Use estritamente uma das seguintes opções: "Overweight", "Neutral", "Underweight". Se a visão não for clara, use "Neutral".
+    - "resumo_tese": Um resumo muito curto (uma frase) da justificativa para a visão.
+
+    **Exemplo de Saída Esperada (deve ser um JSON válido):**
+    [
+        {{
+            "data_referencia": "2025-09-19",
+            "gestora": "BlackRock",
+            "classe_ativo": "Ações",
+            "sub_classe_ativo": "EUA",
+            "visao": "Overweight",
+            "resumo_tese": "Crescimento resiliente e liderança em tecnologia, apesar dos riscos com juros."
+        }},
+        {{
+            "data_referencia": "2025-09-19",
+            "gestora": "PIMCO",
+            "classe_ativo": "Renda Fixa",
+            "sub_classe_ativo": "Global High Grade",
+            "visao": "Underweight",
+            "resumo_tese": "Juros ainda restritivos oferecem pouco upside para os títulos de alta qualidade."
+        }}
+    ]
+
+    Se você não encontrar nenhuma visão clara no texto, retorne uma lista vazia [].
+    Sua resposta deve conter APENAS o JSON, sem nenhum texto adicional antes ou depois.
+    """
+
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+
+# --- INTERFACE PRINCIPAL ---
+st.title("📊 Painel Consolidado de Visões de Mercado")
+
+# Carrega os dados
 df = carregar_dados()
 
-# --- BARRA LATERAL (FILTROS) ---
-st.sidebar.header("Filtros")
-gestoras_selecionadas = st.sidebar.multiselect(
-    "Selecione a(s) Gestora(s):",
-    options=df['gestora'].unique(),
-    default=df['gestora'].unique()
-)
-
-# Filtra o dataframe principal com base na seleção
-df_filtrado = df[df['gestora'].isin(gestoras_selecionadas)]
-
-# --- TÍTULO DO PAINEL ---
-st.title("📊 Painel Consolidado de Visões de Mercado")
-st.markdown("Análise das principais visões de mercado das gestoras globais e locais.")
-
-# --- RESUMOS DE TEXTO (CONSENSO E DIVERGÊNCIAS) ---
-st.subheader("Principais Consensos e Divergências")
-
-# Encontra a visão mais comum (consenso) para cada subclasse de ativo
-consenso = df_filtrado.groupby('sub_classe_ativo')['visao'].agg(lambda x: x.mode()[0] if not x.mode().empty else 'N/A').reset_index()
-consenso.columns = ['Sub-Classe de Ativo', 'Visão de Consenso']
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.info("Visão de Consenso por Ativo")
-    st.dataframe(consenso, use_container_width=True)
-
-with col2:
-    st.warning("Destaques")
-    # Exemplo simples de destaque
-    overweights = df_filtrado[df_filtrado['visao'] == 'Overweight']['sub_classe_ativo'].nunique()
-    underweights = df_filtrado[df_filtrado['visao'] == 'Underweight']['sub_classe_ativo'].nunique()
-    st.markdown(f"Atualmente, há **{overweights}** subclasses com pelo menos uma visão 'Overweight' e **{underweights}** com pelo menos uma visão 'Underweight' no filtro atual.")
+# Cria as abas
+tab1, tab2 = st.tabs(["**Dashboard Consolidado**", "**🤖 Extração com IA a partir de PDF**"])
 
 
-# --- HEATMAP DE VISÕES ---
-st.subheader("Heatmap de Visões de Mercado")
-
-if not df_filtrado.empty:
-    # Prepara a tabela para o heatmap (pivot)
-    heatmap_data = df_filtrado.pivot_table(
-        index='sub_classe_ativo',
-        columns='gestora',
-        values='visao',
-        aggfunc=lambda x: ' '.join(x) # Simplesmente junta as visões se houver duplicatas
-    ).fillna('N/A') # Preenche células vazias
-
-    # Mapeia as visões para valores numéricos para o Plotly colorir
-    mapa_cores_valores = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1, 'N/A': 0}
-    heatmap_data_numerica = heatmap_data.applymap(lambda x: mapa_cores_valores.get(x, 0))
-
-    fig = px.imshow(
-        heatmap_data_numerica,
-        text_auto=False, # Para não mostrar os números nas células
-        aspect="auto",
-        labels=dict(x="Gestora", y="Sub-Classe de Ativo", color="Nível de Visão"),
-        color_continuous_scale=[(0, "#E0E0E0"), (0.25, "#D9534F"), (0.5, "#FFC107"), (1, "#5CB85C")] # N/A, Under, Neutral, Over
+# --- ABA 1: DASHBOARD ---
+with tab1:
+    st.sidebar.header("Filtros do Dashboard")
+    gestoras_selecionadas = st.sidebar.multiselect(
+        "Selecione a(s) Gestora(s):",
+        options=df['gestora'].unique(),
+        default=df['gestora'].unique()
     )
+    df_filtrado = df[df['gestora'].isin(gestoras_selecionadas)]
 
-    # Adiciona o texto original de volta como anotação (hover text)
-    fig.update_traces(
-        hovertemplate="<b>Gestora:</b> %{x}<br><b>Ativo:</b> %{y}<br><b>Visão:</b> %{customdata}<extra></extra>",
-        customdata=heatmap_data
-    )
+    st.subheader("Principais Consensos e Divergências")
+    consenso = df_filtrado.groupby('sub_classe_ativo')['visao'].agg(lambda x: x.mode()[0] if not x.mode().empty else 'N/A').reset_index()
+    consenso.columns = ['Sub-Classe de Ativo', 'Visão de Consenso']
+    st.dataframe(consenso, use_container_width=True, hide_index=True)
 
-    fig.update_layout(
-        height=600,
-        xaxis_title="",
-        yaxis_title="",
-        coloraxis_showscale=False # Esconde a barra de cores contínua
-    )
+    st.subheader("Heatmap de Visões de Mercado")
+    if not df_filtrado.empty:
+        heatmap_data = df_filtrado.pivot_table(index='sub_classe_ativo', columns='gestora', values='visao', aggfunc=lambda x: ' '.join(x)).fillna('N/A')
+        mapa_cores_valores = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1, 'N/A': 0}
+        heatmap_data_numerica = heatmap_data.applymap(lambda x: mapa_cores_valores.get(x, 0))
+        fig = px.imshow(heatmap_data_numerica, text_auto=False, aspect="auto",
+                        labels=dict(x="Gestora", y="Sub-Classe de Ativo", color="Nível de Visão"),
+                        color_continuous_scale=[(0, "#E0E0E0"), (0.33, "#D9534F"), (0.66, "#FFC107"), (1, "#5CB85C")]) # N/A, Under, Neutral, Over
+        fig.update_traces(hovertemplate="<b>Gestora:</b> %{x}<br><b>Ativo:</b> %{y}<br><b>Visão:</b> %{customdata}<extra></extra>", customdata=heatmap_data)
+        fig.update_layout(height=600, xaxis_title="", yaxis_title="", coloraxis_showscale=False)
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Nenhuma gestora selecionada.")
 
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.warning("Nenhuma gestora selecionada ou dados disponíveis para a seleção.")
+    with st.expander("Ver tabela de dados completa"):
+        st.dataframe(df_filtrado)
 
+# --- ABA 2: EXTRAÇÃO COM IA ---
+with tab2:
+    st.header("Extraia Visões de Relatórios em PDF")
+    st.markdown("Faça o upload de um relatório mensal ou trimestral de uma gestora para que a IA extraia as principais visões de alocação.")
 
-# --- EXIBIÇÃO DOS DADOS COMPLETOS (opcional) ---
-with st.expander("Ver tabela de dados completa"):
-    st.dataframe(df_filtrado)
+    nome_gestora_input = st.text_input("Nome da Gestora (ex: BlackRock, PIMCO, Verde Asset):")
+    arquivo_pdf = st.file_uploader("Selecione o arquivo PDF:", type="pdf")
+
+    if st.button("Analisar Relatório") and arquivo_pdf and nome_gestora_input:
+        with st.spinner("Lendo o PDF e consultando a IA... Isso pode levar um minuto."):
+            texto_do_pdf = extrair_texto_pdf(arquivo_pdf)
+
+            if texto_do_pdf:
+                st.success("Texto do PDF extraído com sucesso!")
+
+                resultado_ia = extrair_visoes_com_ia(texto_do_pdf, nome_gestora_input)
+
+                if resultado_ia:
+                    st.subheader("Resultados da Extração (para sua revisão):")
+                    try:
+                        # Limpa a resposta da IA para garantir que seja um JSON válido
+                        json_limpo = resultado_ia.strip().replace("```json", "").replace("```", "")
+                        dados_extraidos = json.loads(json_limpo)
+                        df_extraido = pd.DataFrame(dados_extraidos)
+
+                        st.dataframe(df_extraido, use_container_width=True)
+
+                        st.info(
+                            "✅ **Ação Necessária:** Se os dados acima estão corretos, copie-os e cole-os como novas linhas no arquivo "
+                            "[dados_mercado.csv](https://github.com/NathanFarinha10/painel-alocacao/edit/main/dados_mercado.csv) "
+                            "do seu repositório no GitHub para atualizar o dashboard."
+                        )
+                        st.warning("A atualização não é automática. Você precisa confirmar e adicionar os dados manualmente.")
+
+                    except json.JSONDecodeError:
+                        st.error("A IA retornou um formato que não é um JSON válido. Tente novamente ou ajuste o prompt.")
+                        st.text_area("Resposta Bruta da IA:", value=resultado_ia, height=200)
+                    except Exception as e:
+                        st.error(f"Ocorreu um erro ao processar o resultado: {e}")
+                        st.text_area("Resposta Bruta da IA:", value=resultado_ia, height=200)
+                else:
+                    st.error("Não foi possível obter uma resposta da IA.")
+            else:
+                st.error("Não foi possível extrair texto do PDF. O arquivo pode ser uma imagem.")
