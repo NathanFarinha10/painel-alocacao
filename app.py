@@ -37,6 +37,14 @@ def carregar_riscos_oportunidades():
     except FileNotFoundError:
         return pd.DataFrame()
 
+@st.cache_data
+def carregar_detalhes_ativos():
+    try:
+        with open('detalhes_ativos.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
 # --- FUNÇÕES DE PROCESSAMENTO DE IA ---
 def extrair_texto_pdf(arquivo_pdf):
     # (Código inalterado)
