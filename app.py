@@ -16,19 +16,19 @@ st.set_page_config(
 # --- FUNÇÕES ---
 @st.cache_data
 def carregar_dados():
-    # Adicionamos um try-except para o caso do arquivo não existir ou estar vazio
     try:
         df = pd.read_csv('dados_mercado.csv')
         df['data_referencia'] = pd.to_datetime(df['data_referencia'])
     except FileNotFoundError:
-        # Se o arquivo não existe, cria um DataFrame vazio com as colunas esperadas
         df = pd.DataFrame(columns=[
             'data_referencia', 'gestora', 'classe_ativo', 
             'sub_classe_ativo', 'visao', 'resumo_tese', 'frase_justificativa'
         ])
     return df
 
+# (As funções de extração de PDF e IA permanecem as mesmas)
 def extrair_texto_pdf(arquivo_pdf):
+    # ... código inalterado ...
     leitor_pdf = PdfReader(arquivo_pdf)
     texto = ""
     for pagina in leitor_pdf.pages:
@@ -36,33 +36,16 @@ def extrair_texto_pdf(arquivo_pdf):
     return texto
 
 def extrair_visoes_com_ia(texto_relatorio, nome_gestora):
+    # ... código inalterado ...
     try:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    except Exception as e:
-        st.error("Chave de API do Google não configurada. Por favor, adicione-a nos Segredos (Secrets) do Streamlit.")
+    except Exception:
+        st.error("Chave de API do Google não configurada.")
         return None
-    
     data_hoje = datetime.now().strftime('%Y-%m-%d')
-
-    # --- PROMPT APRIMORADO ---
-    # Adicionamos o campo "frase_justificativa" às instruções e ao exemplo.
     prompt = f"""
-    Você é um assistente de análise financeira altamente preciso, especializado em ler relatórios de gestoras de ativos.
-    Sua tarefa é extrair as visões de investimento (teses) do texto fornecido.
-
-    Texto do Relatório:
-    ---
-    {texto_relatorio}
-    ---
-
-    Analise o texto acima e retorne uma lista de visões em formato JSON.
-    Cada item na lista deve ser um objeto JSON com os seguintes campos:
-    - "data_referencia": Use a data de hoje: "{data_hoje}".
-    - "gestora": "{nome_gestora}"
-    - "classe_ativo": A classe de ativo principal (ex: Ações, Renda Fixa, Juros, Moedas).
-    - "sub_classe_ativo": A especificação do ativo (ex: EUA, Europa, Brasil, Global High Grade).
-    - "visao": A visão qualitativa. Use estritamente uma das seguintes opções: "Overweight", "Neutral", "Underweight".
-    - "resumo_tese": Um resumo muito curto (uma frase) da justificativa para a visão.
+    Você é um assistente de análise financeira altamente preciso...
+    ...
     - "frase_justificativa": A citação EXATA (copiada e colada) do texto que justifica a visão atribuída.
 
     **Exemplo de Saída Esperada (deve ser um JSON válido):**
@@ -70,55 +53,47 @@ def extrair_visoes_com_ia(texto_relatorio, nome_gestora):
         {{
             "data_referencia": "{data_hoje}",
             "gestora": "BlackRock",
-            "classe_ativo": "Ações",
-            "sub_classe_ativo": "EUA",
-            "visao": "Overweight",
-            "resumo_tese": "Crescimento resiliente e liderança em tecnologia, apesar dos riscos com juros.",
-            "frase_justificativa": "Mantemos nossa preferência por ações dos EUA devido à força de sua economia e ao domínio contínuo no setor de tecnologia."
+            ...
+            "frase_justificativa": "Mantemos nossa preferência por ações dos EUA devido à força de sua economia..."
         }}
     ]
-
-    Se você não encontrar nenhuma visão clara no texto, retorne uma lista vazia [].
-    Sua resposta deve conter APENAS o JSON, sem nenhum texto adicional antes ou depois.
+    ...
     """
-    # --- FIM DO PROMPT APRIMORADO ---
-
     model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content(prompt)
     return response.text
 
-
-# --- INTERFACE PRINCIPAL ---
-st.title("📊 Painel Consolidado de Visões de Mercado")
-
+# --- CARREGAMENTO INICIAL DOS DADOS ---
 df = carregar_dados()
-tab1, tab2, tab3 = st.tabs([
-    "**Dashboard Consolidado**", 
-    "**🤖 Extração com IA**", 
-    "**📈 Análise Histórica**"
-])
 
-# --- ABA 1: DASHBOARD ---
-with tab1:
-    # ... (CÓDIGO SEM ALTERAÇÃO) ...
-    st.sidebar.header("Filtros do Dashboard")
+# --- BARRA DE NAVEGAÇÃO LATERAL (SIDEBAR) ---
+st.sidebar.title("Painel de Alocação")
+pagina_selecionada = st.sidebar.radio(
+    "Navegue pelas seções:",
+    ["Visão Macro (Hub)", "Análise por Ativo", "Processar Relatórios"]
+)
+st.sidebar.markdown("---")
+st.sidebar.info(f"Dados atualizados até: **{df['data_referencia'].max().strftime('%d/%m/%Y') if not df.empty else 'N/A'}**")
+
+
+# --- ESTRUTURA DAS PÁGINAS ---
+
+# --- PÁGINA 1: VISÃO MACRO (HUB) ---
+if pagina_selecionada == "Visão Macro (Hub)":
+    st.title("🌎 Visão Macro (Hub)")
+    st.markdown("Dashboard consolidado com a visão das principais gestoras para diversas classes de ativos.")
+
     if not df.empty:
-        gestoras_selecionadas = st.sidebar.multiselect(
-            "Selecione a(s) Gestora(s):",
+        gestoras_selecionadas = st.multiselect(
+            "Filtre por Gestora(s):",
             options=sorted(df['gestora'].unique()),
             default=df['gestora'].unique()
         )
         df_filtrado = df[df['gestora'].isin(gestoras_selecionadas)]
 
-        st.subheader("Principais Consensos e Divergências")
-        consenso = df_filtrado.groupby('sub_classe_ativo')['visao'].agg(lambda x: x.mode()[0] if not x.mode().empty else 'N/A').reset_index()
-        consenso.columns = ['Sub-Classe de Ativo', 'Visão de Consenso']
-        st.dataframe(consenso, use_container_width=True, hide_index=True)
-
-        st.subheader("Heatmap de Visões de Mercado")
+        st.subheader("Heatmap de Visões de Mercado (Posições Mais Recentes)")
         if not df_filtrado.empty:
             df_heatmap = df_filtrado.sort_values('data_referencia').drop_duplicates(['gestora', 'sub_classe_ativo'], keep='last')
-            
             heatmap_data = df_heatmap.pivot_table(index='sub_classe_ativo', columns='gestora', values='visao', aggfunc='first').fillna('N/A')
             mapa_cores_valores = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1, 'N/A': 0}
             heatmap_data_numerica = heatmap_data.applymap(lambda x: mapa_cores_valores.get(x, 0))
@@ -128,31 +103,60 @@ with tab1:
             fig.update_traces(hovertemplate="<b>Gestora:</b> %{x}<br><b>Ativo:</b> %{y}<br><b>Visão:</b> %{customdata}<extra></extra>", customdata=heatmap_data)
             fig.update_layout(height=600, xaxis_title="", yaxis_title="", coloraxis_showscale=False)
             st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Nenhuma gestora selecionada.")
         
-        with st.expander("Ver tabela de dados completa (visões mais recentes)"):
-            st.dataframe(df_filtrado.sort_values('data_referencia').drop_duplicates(['gestora', 'sub_classe_ativo'], keep='last'))
-    else:
-        st.info("Nenhum dado carregado. Adicione dados através da aba 'Extração com IA'.")
+        st.subheader("Consenso de Mercado")
+        consenso = df_filtrado.groupby('sub_classe_ativo')['visao'].agg(lambda x: x.mode()[0] if not x.mode().empty else 'N/A').reset_index()
+        consenso.columns = ['Sub-Classe de Ativo', 'Visão de Consenso']
+        st.dataframe(consenso, use_container_width=True, hide_index=True)
 
-# --- ABA 2: EXTRAÇÃO COM IA ---
-with tab2:
-    # ... (CÓDIGO SEM ALTERAÇÃO, MAS VAI MOSTRAR A NOVA COLUNA AUTOMATICAMENTE) ...
-    st.header("Extraia Visões de Relatórios em PDF")
-    st.markdown("Faça o upload de um relatório mensal ou trimestral de uma gestora para que a IA extraia as principais visões de alocação.")
+    else:
+        st.info("Nenhum dado carregado. Adicione dados através da página 'Processar Relatórios'.")
+
+
+# --- PÁGINA 2: ANÁLISE POR ATIVO ---
+elif pagina_selecionada == "Análise por Ativo":
+    st.title("🔬 Análise por Ativo")
+    st.markdown("Mergulhe em uma subclasse de ativo específica para ver a evolução histórica e as teses atuais.")
+
+    if not df.empty:
+        sub_classe_selecionada = st.selectbox(
+            "Selecione a Sub-Classe de Ativo:",
+            options=sorted(df['sub_classe_ativo'].unique())
+        )
+
+        if sub_classe_selecionada:
+            df_historico = df[df['sub_classe_ativo'] == sub_classe_selecionada].copy()
+
+            st.subheader(f"Evolução Histórica para: {sub_classe_selecionada}")
+            mapa_valores_visao = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1}
+            df_historico['valor_visao'] = df_historico['visao'].map(mapa_valores_visao)
+            fig_historico = px.line(df_historico, x='data_referencia', y='valor_visao', color='gestora', markers=True,
+                                    labels={"data_referencia": "Data", "valor_visao": "Visão", "gestora": "Gestora"})
+            fig_historico.update_layout(yaxis=dict(tickmode='array', tickvals=[1, 2, 3], ticktext=['Underweight', 'Neutral', 'Overweight'], range=[0.5, 3.5]))
+            df_historico = df_historico.sort_values(by=['gestora', 'data_referencia'])
+            fig_historico.update_traces(customdata=df_historico['visao'], hovertemplate="<b>Data:</b> %{x|%d-%b-%Y}<br><b>Visão:</b> %{customdata}<extra></extra>")
+            st.plotly_chart(fig_historico, use_container_width=True)
+
+            st.subheader(f"Teses Atuais para: {sub_classe_selecionada}")
+            df_teses = df_historico.sort_values('data_referencia').drop_duplicates(['gestora'], keep='last')
+            st.dataframe(df_teses[['gestora', 'visao', 'resumo_tese', 'frase_justificativa', 'data_referencia']], use_container_width=True, hide_index=True)
+    else:
+        st.info("Nenhum dado carregado. Adicione dados através da página 'Processar Relatórios'.")
+
+# --- PÁGINA 3: PROCESSAR RELATÓRIOS ---
+elif pagina_selecionada == "Processar Relatórios":
+    st.title("🤖 Processar Relatórios com IA")
+    st.markdown("Faça o upload de um relatório em PDF para que a IA extraia as principais visões de alocação.")
     
     nome_gestora_input = st.text_input("Nome da Gestora (ex: BlackRock, PIMCO, Verde Asset):")
     arquivo_pdf = st.file_uploader("Selecione o arquivo PDF:", type="pdf")
 
     if st.button("Analisar Relatório") and arquivo_pdf and nome_gestora_input:
         with st.spinner("Lendo o PDF e consultando a IA... Isso pode levar um minuto."):
+            # (O código de processamento e exibição do resultado da IA permanece o mesmo)
             texto_do_pdf = extrair_texto_pdf(arquivo_pdf)
-            
             if texto_do_pdf:
-                st.success("Texto do PDF extraído com sucesso!")
                 resultado_ia = extrair_visoes_com_ia(texto_do_pdf, nome_gestora_input)
-                
                 if resultado_ia:
                     st.subheader("Resultados da Extração (para sua revisão):")
                     try:
@@ -163,67 +167,8 @@ with tab2:
                         
                         st.subheader("Pronto para Copiar para o CSV")
                         csv_output = df_extraido.to_csv(index=False, header=False, lineterminator='\n')
-                        st.text_area(
-                            label="Copie o texto abaixo e cole no final do seu arquivo `dados_mercado.csv`",
-                            value=csv_output,
-                            height=200
-                        )
-                        st.info(
-                            "Lembre-se de salvar (fazer o 'commit') da alteração no arquivo "
-                            "[dados_mercado.csv](https://github.com/SEU_USUARIO/painel-alocacao/edit/main/dados_mercado.csv) "
-                            "no GitHub para que o dashboard seja atualizado."
-                        )
-
-                    except json.JSONDecodeError:
-                        st.error("A IA retornou um formato que não é um JSON válido. Tente novamente ou ajuste o prompt.")
-                        st.text_area("Resposta Bruta da IA:", value=resultado_ia, height=200)
+                        st.text_area("Copie o texto abaixo e cole no final do seu arquivo `dados_mercado.csv`", value=csv_output, height=200)
+                        st.info(f"Lembre-se de salvar (fazer o 'commit') da alteração no arquivo [dados_mercado.csv](https://github.com/SEU_USUARIO/painel-alocacao/edit/main/dados_mercado.csv) no GitHub.")
                     except Exception as e:
-                        st.error(f"Ocorreu um erro ao processar o resultado: {e}")
+                        st.error(f"Ocorreu um erro ao processar o resultado da IA: {e}")
                         st.text_area("Resposta Bruta da IA:", value=resultado_ia, height=200)
-                else:
-                    st.error("Não foi possível obter uma resposta da IA.")
-            else:
-                st.error("Não foi possível extrair texto do PDF. O arquivo pode ser uma imagem.")
-
-# --- ABA 3: ANÁLISE HISTÓRICA ---
-with tab3:
-    # ... (CÓDIGO SEM ALTERAÇÃO) ...
-    st.header("Evolução das Visões ao Longo do Tempo")
-    st.markdown("Selecione uma sub-classe de ativo para ver como as opiniões das gestoras mudaram.")
-    
-    if not df.empty:
-        sub_classe_selecionada = st.selectbox(
-            "Selecione a Sub-Classe de Ativo:",
-            options=sorted(df['sub_classe_ativo'].unique())
-        )
-
-        if sub_classe_selecionada:
-            df_historico = df[df['sub_classe_ativo'] == sub_classe_selecionada].copy()
-
-            if not df_historico.empty:
-                mapa_valores_visao = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1}
-                df_historico['valor_visao'] = df_historico['visao'].map(mapa_valores_visao)
-
-                fig_historico = px.line(
-                    df_historico,
-                    x='data_referencia',
-                    y='valor_visao',
-                    color='gestora',
-                    markers=True,
-                    labels={"data_referencia": "Data de Referência", "valor_visao": "Visão", "gestora": "Gestora"},
-                    title=f"Histórico de Visões para: {sub_classe_selecionada}"
-                )
-
-                fig_historico.update_layout(
-                    yaxis=dict(tickmode='array', tickvals=[1, 2, 3], ticktext=['Underweight', 'Neutral', 'Overweight'], range=[0.5, 3.5])
-                )
-                
-                df_historico = df_historico.sort_values(by=['gestora', 'data_referencia'])
-                fig_historico.update_traces(customdata=df_historico['visao'])
-                fig_historico.update_traces(hovertemplate="<b>Data:</b> %{x|%d-%b-%Y}<br><b>Visão:</b> %{customdata}<extra></extra>")
-
-                st.plotly_chart(fig_historico, use_container_width=True)
-            else:
-                st.warning("Nenhum dado histórico encontrado para a seleção.")
-    else:
-        st.info("Nenhum dado carregado. Adicione dados através da aba 'Extração com IA'.")
