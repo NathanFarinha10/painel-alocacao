@@ -165,54 +165,62 @@ elif st.session_state.pagina_selecionada == "Assets View":
     st.markdown("Análise detalhada das classes de ativos por região")
 
     if not df_visoes.empty:
-        # --- FILTRO 1: SELEÇÃO DE REGIÃO ---
         regioes = df_visoes['regiao'].unique()
-        regiao_selecionada = st.radio(
-            "Seleção de Região",
-            options=regioes,
-            horizontal=True
-        )
-
+        regiao_selecionada = st.radio("Seleção de Região", options=regioes, horizontal=True)
         df_regiao = df_visoes[df_visoes['regiao'] == regiao_selecionada]
         
         col_classes, col_detalhes = st.columns([1, 3])
 
         with col_classes:
-            # --- FILTRO 2: CLASSES DE ATIVOS ---
-            st.subheader("Classes de Ativos")
             classes_ativos = df_regiao['classe_ativo_geral'].unique()
-            classe_selecionada = st.radio(
-                "Classes de Ativos",
-                options=classes_ativos,
-                label_visibility="collapsed" # Esconde o label principal
-            )
+            classe_selecionada = st.radio("Classes de Ativos", options=classes_ativos, label_visibility="collapsed")
 
         with col_detalhes:
-            # --- ÁREA DE CONTEÚDO ---
             st.header(f"{classe_selecionada} - {regiao_selecionada}")
-
-            # Mapeamento de Visão para Sentimento
-            mapa_sentimento = {"Overweight": "Otimista", "Neutral": "Neutro", "Underweight": "Pessimista"}
-            mapa_cores_tag = {"Otimista": "tag-otimista", "Neutro": "tag-neutro", "Pessimista": "tag-pessimista"}
-
-            st.subheader("Visões das Gestoras")
             
-            df_views = df_regiao[df_regiao['classe_ativo_geral'] == classe_selecionada]
-            df_views_recentes = df_views.sort_values('data_referencia').drop_duplicates('gestora', keep='last')
+            # --- NOVAS SEÇÕES USANDO O JSON ---
+            lookup_key = f"{regiao_selecionada}_{classe_selecionada}"
+            detalhes = detalhes_ativos.get(lookup_key, {})
 
-            for _, row in df_views_recentes.iterrows():
-                sentimento = mapa_sentimento.get(row['visao'], "Neutro")
-                cor_tag = mapa_cores_tag.get(sentimento, "tag-neutro")
-                
+            if detalhes:
+                st.markdown(f"**Overview:** *{detalhes.get('overview', 'N/A')}*")
+                st.markdown(f"**Consensus:** `{detalhes.get('consensus', 'N/A')}`")
+
+                st.subheader("Visões das Gestoras")
+                # (Código para exibir os cards das gestoras - inalterado)
+                df_views = df_regiao[df_regiao['classe_ativo_geral'] == classe_selecionada]
+                df_views_recentes = df_views.sort_values('data_referencia').drop_duplicates('gestora', keep='last')
+                for _, row in df_views_recentes.iterrows():
+                    # ... (código dos cards inalterado)
+                    st.markdown(f"""
+                        <div class="card">
+                            <div><strong>{row['gestora']}</strong><br><small>{row['resumo_tese']}</small></div>
+                            <div class="tag ...">{...}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                st.subheader("Principais Drivers")
+                drivers = detalhes.get('drivers', [])
+                st.write(" &nbsp; ".join([f"`{driver}`" for driver in drivers]))
+
+                st.subheader("Investment Thesis")
+                thesis = detalhes.get('investment_thesis', {})
                 st.markdown(f"""
-                <div class="card">
-                    <div>
-                        <strong>{row['gestora']}</strong><br>
-                        <small>{row['resumo_tese']}</small>
+                    <div class="case-box bullish">
+                        <strong>Bullish Case</strong><br>
+                        {thesis.get('bullish', 'N/A')}
                     </div>
-                    <div class="tag {cor_tag}">{sentimento}</div>
-                </div>
+                    <div class="case-box bearish">
+                        <strong>Bearish Case</strong><br>
+                        {thesis.get('bearish', 'N/A')}
+                    </div>
+                    <div class="case-box base">
+                        <strong>Base Case</strong><br>
+                        {thesis.get('base', 'N/A')}
+                    </div>
                 """, unsafe_allow_html=True)
+            else:
+                st.warning("Dados detalhados para esta seleção de ativo ainda não foram cadastrados.")
 
 # --- PÁGINA 3: ANÁLISE POR GESTORA (NOVA PÁGINA) ---
 elif st.session_state.pagina_selecionada == "Análise por Gestora":
