@@ -129,7 +129,7 @@ with tab2:
     st.markdown("Faça o upload de um relatório mensal ou trimestral de uma gestora para que a IA extraia as principais visões de alocação.")
     
     nome_gestora_input = st.text_input("Nome da Gestora (ex: BlackRock, PIMCO, Verde Asset):")
-    arquivo_pdf = st.uploader("Selecione o arquivo PDF:", type="pdf")
+    arquivo_pdf = st.file_uploader("Selecione o arquivo PDF:", type="pdf")
 
     if st.button("Analisar Relatório") and arquivo_pdf and nome_gestora_input:
         with st.spinner("Lendo o PDF e consultando a IA... Isso pode levar um minuto."):
