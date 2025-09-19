@@ -1,0 +1,32 @@
+{
+  "EUA_Ações": {
+    "overview": "Mercado resiliente com valuations esticados, sustentado pela liderança em tecnologia e um consumidor forte, mas com riscos fiscais e de juros no horizonte.",
+    "consensus": "Neutro com viés positivo",
+    "drivers": ["Fed Policy", "Earnings Growth", "Geopolitics"],
+    "investment_thesis": {
+      "bullish": "O cenário de 'soft landing' se materializa, com a inflação convergindo para a meta sem uma recessão significativa, permitindo que o Fed inicie um ciclo de cortes de juros que sustenta os múltiplos das ações.",
+      "bearish": "A inflação se mostra mais persistente do que o esperado, forçando o Fed a manter os juros elevados por mais tempo, o que comprime as margens de lucro e leva a uma recessão econômica.",
+      "base": "O cenário mais provável equilibra oportunidades e riscos, considerando a evolução gradual dos fatores macroeconômicos e um crescimento moderado dos lucros corporativos."
+    }
+  },
+  "EUA_Renda Fixa": {
+    "overview": "Rendimentos atrativos em títulos do governo com o fim do ciclo de alta de juros, mas spreads de crédito apertados oferecem pouco prêmio pelo risco.",
+    "consensus": "Otimista",
+    "drivers": ["Fed Policy", "Inflation Data", "Fiscal Deficit"],
+    "investment_thesis": {
+      "bullish": "A desinflação rápida permite que o Fed corte os juros mais agressivamente do que o mercado precifica, gerando ganhos de capital significativos em títulos de longa duração.",
+      "bearish": "A necessidade de financiar um déficit fiscal elevado aumenta a oferta de títulos no mercado, pressionando as taxas de juros para cima e causando perdas nos preços dos títulos.",
+      "base": "O Fed corta os juros de forma gradual, em linha com as expectativas, mantendo os rendimentos em um patamar atrativo e oferecendo um bom carrego para os investidores."
+    }
+  },
+  "Brasil_Ações": {
+    "overview": "Valuation atrativo e potencial de queda da taxa de juros são ventos a favor, mas o cenário fiscal e o ruído político continuam sendo os principais detratores.",
+    "consensus": "Neutro com viés positivo",
+    "drivers": ["Política Fiscal", "Cortes da Selic", "Fluxo Estrangeiro"],
+    "investment_thesis": {
+      "bullish": "O governo demonstra compromisso com a meta fiscal e o Banco Central acelera o ritmo de cortes da Selic, atraindo forte fluxo de capital estrangeiro para a bolsa.",
+      "bearish": "A percepção de risco fiscal se deteriora, pressionando a curva de juros longa e o câmbio, o que anula o efeito positivo da queda da Selic sobre as ações.",
+      "base": "O ciclo de cortes de juros continua de forma gradual, mas a incerteza fiscal limita o potencial de alta, exigindo uma seleção cuidadosa de ações (stock picking)."
+    }
+  }
+}
