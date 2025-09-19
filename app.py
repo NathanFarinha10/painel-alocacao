@@ -8,22 +8,19 @@ from datetime import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Painel de Visões de Mercado",
-    page_icon="📊",
+    page_title="Market Intelligence Platform",
+    page_icon="🌐",
     layout="wide"
 )
 
-# --- FUNÇÕES ---
+# --- FUNÇÕES DE CARREGAMENTO DE DADOS ---
 @st.cache_data
-def carregar_dados():
+def carregar_dados_visoes():
     try:
         df = pd.read_csv('dados_mercado.csv')
         df['data_referencia'] = pd.to_datetime(df['data_referencia'])
     except FileNotFoundError:
-        df = pd.DataFrame(columns=[
-            'data_referencia', 'gestora', 'classe_ativo', 
-            'sub_classe_ativo', 'visao', 'resumo_tese', 'frase_justificativa'
-        ])
+        df = pd.DataFrame() # Retorna DF vazio se não encontrar
     return df
 
 @st.cache_data
@@ -40,9 +37,8 @@ def carregar_riscos_oportunidades():
     except FileNotFoundError:
         return pd.DataFrame({'tipo': [], 'topico': [], 'descricao': [], 'score': []})
 
-# (As funções de extração de PDF e IA permanecem as mesmas)
+# --- FUNÇÕES DE PROCESSAMENTO DE IA ---
 def extrair_texto_pdf(arquivo_pdf):
-    # ... código inalterado ...
     leitor_pdf = PdfReader(arquivo_pdf)
     texto = ""
     for pagina in leitor_pdf.pages:
@@ -50,16 +46,31 @@ def extrair_texto_pdf(arquivo_pdf):
     return texto
 
 def extrair_visoes_com_ia(texto_relatorio, nome_gestora):
-    # ... código inalterado ...
     try:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    except Exception:
-        st.error("Chave de API do Google não configurada.")
+    except Exception as e:
+        st.error("Chave de API do Google não configurada. Por favor, adicione-a nos Segredos (Secrets) do Streamlit.")
         return None
+    
     data_hoje = datetime.now().strftime('%Y-%m-%d')
+
     prompt = f"""
-    Você é um assistente de análise financeira altamente preciso...
-    ...
+    Você é um assistente de análise financeira altamente preciso, especializado em ler relatórios de gestoras de ativos.
+    Sua tarefa é extrair as visões de investimento (teses) do texto fornecido.
+
+    Texto do Relatório:
+    ---
+    {texto_relatorio}
+    ---
+
+    Analise o texto acima e retorne uma lista de visões em formato JSON.
+    Cada item na lista deve ser um objeto JSON com os seguintes campos:
+    - "data_referencia": Use a data de hoje: "{data_hoje}".
+    - "gestora": "{nome_gestora}"
+    - "classe_ativo": A classe de ativo principal (ex: Ações, Renda Fixa, Juros, Moedas).
+    - "sub_classe_ativo": A especificação do ativo (ex: EUA, Europa, Brasil, Global High Grade).
+    - "visao": A visão qualitativa. Use estritamente uma das seguintes opções: "Overweight", "Neutral", "Underweight".
+    - "resumo_tese": Um resumo muito curto (uma frase) da justificativa para a visão.
     - "frase_justificativa": A citação EXATA (copiada e colada) do texto que justifica a visão atribuída.
 
     **Exemplo de Saída Esperada (deve ser um JSON válido):**
@@ -67,32 +78,38 @@ def extrair_visoes_com_ia(texto_relatorio, nome_gestora):
         {{
             "data_referencia": "{data_hoje}",
             "gestora": "BlackRock",
-            ...
-            "frase_justificativa": "Mantemos nossa preferência por ações dos EUA devido à força de sua economia..."
+            "classe_ativo": "Ações",
+            "sub_classe_ativo": "EUA",
+            "visao": "Overweight",
+            "resumo_tese": "Crescimento resiliente e liderança em tecnologia, apesar dos riscos com juros.",
+            "frase_justificativa": "Mantemos nossa preferência por ações dos EUA devido à força de sua economia e ao domínio contínuo no setor de tecnologia."
         }}
     ]
-    ...
+
+    Se você não encontrar nenhuma visão clara no texto, retorne uma lista vazia [].
+    Sua resposta deve conter APENAS o JSON, sem nenhum texto adicional antes ou depois.
     """
+
     model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content(prompt)
     return response.text
 
 # --- CARREGAMENTO INICIAL DOS DADOS ---
-df = carregar_dados()
 df_visoes = carregar_dados_visoes()
 df_kpis = carregar_kpis()
 df_riscos = carregar_riscos_oportunidades()
 
 # --- BARRA DE NAVEGAÇÃO LATERAL (SIDEBAR) ---
-st.sidebar.title("Painel de Alocação")
+st.sidebar.title("Market Intelligence")
 pagina_selecionada = st.sidebar.radio(
     "Navegue pelas seções:",
     ["Visão Macro (Hub)", "Análise por Ativo", "Processar Relatórios"]
 )
 st.sidebar.markdown("---")
-st.sidebar.info(f"Dados atualizados até: **{df['data_referencia'].max().strftime('%d/%m/%Y') if not df.empty else 'N/A'}**")
+if not df_visoes.empty:
+    st.sidebar.info(f"Dados de visões atualizados até: **{df_visoes['data_referencia'].max().strftime('%d/%m/%Y')}**")
 
-# --- ESTILIZAÇÃO CSS (Opcional, mas ajuda a parecer com a imagem) ---
+# --- ESTILIZAÇÃO CSS ---
 st.markdown("""
     <style>
     .stMetric {
@@ -107,19 +124,12 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-
-# --- ESTRUTURA DAS PÁGINAS ---
-
-# --- PÁGINA 1: VISÃO MACRO (HUB) ---
-# --- PÁGINAS DA APLICAÇÃO ---
-
 # --- PÁGINA 1: VISÃO MACRO (HUB) ---
 if pagina_selecionada == "Visão Macro (Hub)":
     st.title("🌐 Global Intelligence")
     st.markdown("Análise completa do cenário macroeconômico global e oportunidades de investimento")
     st.markdown("---")
 
-    # Seção: Global Scenery in a Nutshell
     st.subheader("Global Scenery in a Nutshell")
     st.text("Termômetro do cenário macroeconômico global atual")
     
@@ -130,10 +140,8 @@ if pagina_selecionada == "Visão Macro (Hub)":
             with cols[i]:
                 st.metric(label=row['nome_metrica'], value=row['valor'])
 
-    # Seção: Sentiment Geral do Mercado
     st.subheader("Sentiment Geral do Mercado")
     if not df_riscos.empty:
-        # Lógica simples de sentimento: média dos scores de oportunidade
         oportunidades = df_riscos[df_riscos['tipo'] == 'Oportunidade']
         sentimento = int(oportunidades['score'].mean()) if not oportunidades.empty else 50
         st.progress(sentimento)
@@ -144,7 +152,6 @@ if pagina_selecionada == "Visão Macro (Hub)":
     col_risco, col_reports = st.columns(2)
 
     with col_risco:
-        # Seção: Risk/Opportunities Map
         st.subheader("Risk/Opportunities Map")
         for _, row in df_riscos.iterrows():
             if row['tipo'] == 'Oportunidade':
@@ -153,10 +160,8 @@ if pagina_selecionada == "Visão Macro (Hub)":
                 st.warning(f"**Risco: {row['topico']}** (Score: {row['score']}) \n*_{row['descricao']}_*")
 
     with col_reports:
-        # Seção: New Reports
         st.subheader("New Reports")
         if not df_visoes.empty:
-            # Pega os relatórios mais recentes (um por gestora)
             novos_relatorios = df_visoes.sort_values('data_referencia', ascending=False).drop_duplicates('gestora').head(5)
             for _, row in novos_relatorios.iterrows():
                 st.markdown(f"**Outlook {row['data_referencia'].strftime('%b %Y')}** \n*{row['gestora']}* \n `{row['data_referencia'].strftime('%d %b')}`")
@@ -167,14 +172,14 @@ elif pagina_selecionada == "Análise por Ativo":
     st.title("🔬 Análise por Ativo")
     st.markdown("Mergulhe em uma subclasse de ativo específica para ver a evolução histórica e as teses atuais.")
 
-    if not df.empty:
+    if not df_visoes.empty:
         sub_classe_selecionada = st.selectbox(
             "Selecione a Sub-Classe de Ativo:",
-            options=sorted(df['sub_classe_ativo'].unique())
+            options=sorted(df_visoes['sub_classe_ativo'].unique())
         )
 
         if sub_classe_selecionada:
-            df_historico = df[df['sub_classe_ativo'] == sub_classe_selecionada].copy()
+            df_historico = df_visoes[df_visoes['sub_classe_ativo'] == sub_classe_selecionada].copy()
 
             st.subheader(f"Evolução Histórica para: {sub_classe_selecionada}")
             mapa_valores_visao = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1}
@@ -190,7 +195,7 @@ elif pagina_selecionada == "Análise por Ativo":
             df_teses = df_historico.sort_values('data_referencia').drop_duplicates(['gestora'], keep='last')
             st.dataframe(df_teses[['gestora', 'visao', 'resumo_tese', 'frase_justificativa', 'data_referencia']], use_container_width=True, hide_index=True)
     else:
-        st.info("Nenhum dado carregado. Adicione dados através da página 'Processar Relatórios'.")
+        st.info("Nenhum dado de visões carregado. Adicione dados através da página 'Processar Relatórios'.")
 
 # --- PÁGINA 3: PROCESSAR RELATÓRIOS ---
 elif pagina_selecionada == "Processar Relatórios":
@@ -202,7 +207,6 @@ elif pagina_selecionada == "Processar Relatórios":
 
     if st.button("Analisar Relatório") and arquivo_pdf and nome_gestora_input:
         with st.spinner("Lendo o PDF e consultando a IA... Isso pode levar um minuto."):
-            # (O código de processamento e exibição do resultado da IA permanece o mesmo)
             texto_do_pdf = extrair_texto_pdf(arquivo_pdf)
             if texto_do_pdf:
                 resultado_ia = extrair_visoes_com_ia(texto_do_pdf, nome_gestora_input)
