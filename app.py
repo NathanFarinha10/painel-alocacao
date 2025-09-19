@@ -74,7 +74,7 @@ st.sidebar.title("Market Intelligence")
 # O radio button agora lê e escreve no session_state
 pagina_selecionada = st.sidebar.radio(
     "Navegue pelas seções:",
-    ["Visão Macro (Hub)", "Análise por Ativo", "Análise por Gestora", "Processar Relatórios"],
+    ["Visão Macro (Hub)", "Assets View", "Análise por Gestora", "Processar Relatórios"],
     key='pagina_selecionada'
 )
 
@@ -85,10 +85,30 @@ if not df_visoes.empty:
 # --- ESTILIZAÇÃO CSS ---
 st.markdown("""
     <style>
-    .stMetric { border: 1px solid #E0E0E0; border-radius: 10px; padding: 15px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.05); }
-    .stProgress > div > div > div > div { background-color: #007bff; }
+    .card {
+        border: 1px solid #E0E0E0;
+        border-radius: 10px;
+        padding: 15px 20px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .tag {
+        background-color: #e9ecef;
+        color: #495057;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.9em;
+        font-weight: 500;
+    }
+    .tag-otimista { background-color: #d4edda; color: #155724; }
+    .tag-neutro { background-color: #fff3cd; color: #856404; }
+    .tag-pessimista { background-color: #f8d7da; color: #721c24; }
     </style>
     """, unsafe_allow_html=True)
+
 
 # --- PÁGINAS DA APLICAÇÃO ---
 
@@ -140,18 +160,59 @@ if st.session_state.pagina_selecionada == "Visão Macro (Hub)":
                     args=(row['gestora'],) # Passa o nome da gestora para a função
                 )
 # --- PÁGINA 2: ANÁLISE POR ATIVO ---
-elif st.session_state.pagina_selecionada == "Análise por Ativo":
-    st.title("🔬 Análise por Ativo")
-    st.markdown("Mergulhe em uma subclasse de ativo específica para ver a evolução histórica e as teses atuais.")
+elif st.session_state.pagina_selecionada == "Assets View":
+    st.title("📊 Assets View")
+    st.markdown("Análise detalhada das classes de ativos por região")
+
     if not df_visoes.empty:
-        sub_classe_selecionada = st.selectbox("Selecione a Sub-Classe de Ativo:", options=sorted(df_visoes['sub_classe_ativo'].unique()))
-        if sub_classe_selecionada:
-            df_filtrado = df_visoes[df_visoes['sub_classe_ativo'] == sub_classe_selecionada]
-            st.subheader(f"Evolução Histórica para: {sub_classe_selecionada}")
-            # (Código do gráfico histórico inalterado)
-            st.subheader(f"Teses Atuais para: {sub_classe_selecionada}")
-            df_teses = df_filtrado.sort_values('data_referencia').drop_duplicates(['gestora'], keep='last')
-            st.dataframe(df_teses[['gestora', 'visao', 'resumo_tese', 'frase_justificativa', 'data_referencia']], use_container_width=True, hide_index=True)
+        # --- FILTRO 1: SELEÇÃO DE REGIÃO ---
+        regioes = df_visoes['regiao'].unique()
+        regiao_selecionada = st.radio(
+            "Seleção de Região",
+            options=regioes,
+            horizontal=True
+        )
+
+        df_regiao = df_visoes[df_visoes['regiao'] == regiao_selecionada]
+        
+        col_classes, col_detalhes = st.columns([1, 3])
+
+        with col_classes:
+            # --- FILTRO 2: CLASSES DE ATIVOS ---
+            st.subheader("Classes de Ativos")
+            classes_ativos = df_regiao['classe_ativo_geral'].unique()
+            classe_selecionada = st.radio(
+                "Classes de Ativos",
+                options=classes_ativos,
+                label_visibility="collapsed" # Esconde o label principal
+            )
+
+        with col_detalhes:
+            # --- ÁREA DE CONTEÚDO ---
+            st.header(f"{classe_selecionada} - {regiao_selecionada}")
+
+            # Mapeamento de Visão para Sentimento
+            mapa_sentimento = {"Overweight": "Otimista", "Neutral": "Neutro", "Underweight": "Pessimista"}
+            mapa_cores_tag = {"Otimista": "tag-otimista", "Neutro": "tag-neutro", "Pessimista": "tag-pessimista"}
+
+            st.subheader("Visões das Gestoras")
+            
+            df_views = df_regiao[df_regiao['classe_ativo_geral'] == classe_selecionada]
+            df_views_recentes = df_views.sort_values('data_referencia').drop_duplicates('gestora', keep='last')
+
+            for _, row in df_views_recentes.iterrows():
+                sentimento = mapa_sentimento.get(row['visao'], "Neutro")
+                cor_tag = mapa_cores_tag.get(sentimento, "tag-neutro")
+                
+                st.markdown(f"""
+                <div class="card">
+                    <div>
+                        <strong>{row['gestora']}</strong><br>
+                        <small>{row['resumo_tese']}</small>
+                    </div>
+                    <div class="tag {cor_tag}">{sentimento}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
 # --- PÁGINA 3: ANÁLISE POR GESTORA (NOVA PÁGINA) ---
 elif st.session_state.pagina_selecionada == "Análise por Gestora":
