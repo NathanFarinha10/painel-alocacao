@@ -17,6 +17,8 @@ st.set_page_config(
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv('dados_mercado.csv')
+    # Importante: converte a coluna de data para o formato datetime para ordenação correta nos gráficos
+    df['data_referencia'] = pd.to_datetime(df['data_referencia'])
     return df
 
 def extrair_texto_pdf(arquivo_pdf):
@@ -78,14 +80,19 @@ def extrair_visoes_com_ia(texto_relatorio, nome_gestora):
 st.title("📊 Painel Consolidado de Visões de Mercado")
 
 df = carregar_dados()
-tab1, tab2 = st.tabs(["**Dashboard Consolidado**", "**🤖 Extração com IA a partir de PDF**"])
+# Adicionamos uma terceira aba
+tab1, tab2, tab3 = st.tabs([
+    "**Dashboard Consolidado**", 
+    "**🤖 Extração com IA**", 
+    "**📈 Análise Histórica**"
+])
 
 # --- ABA 1: DASHBOARD ---
 with tab1:
     st.sidebar.header("Filtros do Dashboard")
     gestoras_selecionadas = st.sidebar.multiselect(
         "Selecione a(s) Gestora(s):",
-        options=df['gestora'].unique(),
+        options=sorted(df['gestora'].unique()),
         default=df['gestora'].unique()
     )
     df_filtrado = df[df['gestora'].isin(gestoras_selecionadas)]
@@ -97,11 +104,14 @@ with tab1:
 
     st.subheader("Heatmap de Visões de Mercado")
     if not df_filtrado.empty:
-        heatmap_data = df_filtrado.pivot_table(index='sub_classe_ativo', columns='gestora', values='visao', aggfunc=lambda x: ' '.join(x)).fillna('N/A')
+        # Pega a visão mais recente para cada combinação de gestora/ativo para o heatmap
+        df_heatmap = df_filtrado.sort_values('data_referencia').drop_duplicates(['gestora', 'sub_classe_ativo'], keep='last')
+        
+        heatmap_data = df_heatmap.pivot_table(index='sub_classe_ativo', columns='gestora', values='visao', aggfunc='first').fillna('N/A')
         mapa_cores_valores = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1, 'N/A': 0}
         heatmap_data_numerica = heatmap_data.applymap(lambda x: mapa_cores_valores.get(x, 0))
         fig = px.imshow(heatmap_data_numerica, text_auto=False, aspect="auto",
-                        labels=dict(x="Gestora", y="Sub-Classe de Ativo", color="Nível de Visão"),
+                        labels=dict(x="Gestora", y="Sub-Classe de Ativo"),
                         color_continuous_scale=[(0, "#E0E0E0"), (0.33, "#D9534F"), (0.66, "#FFC107"), (1, "#5CB85C")])
         fig.update_traces(hovertemplate="<b>Gestora:</b> %{x}<br><b>Ativo:</b> %{y}<br><b>Visão:</b> %{customdata}<extra></extra>", customdata=heatmap_data)
         fig.update_layout(height=600, xaxis_title="", yaxis_title="", coloraxis_showscale=False)
@@ -109,16 +119,17 @@ with tab1:
     else:
         st.warning("Nenhuma gestora selecionada.")
     
-    with st.expander("Ver tabela de dados completa"):
-        st.dataframe(df_filtrado)
+    with st.expander("Ver tabela de dados completa (visões mais recentes)"):
+        st.dataframe(df_filtrado.sort_values('data_referencia').drop_duplicates(['gestora', 'sub_classe_ativo'], keep='last'))
 
 # --- ABA 2: EXTRAÇÃO COM IA ---
 with tab2:
     st.header("Extraia Visões de Relatórios em PDF")
+    # ... (O CÓDIGO DESTA ABA PERMANECE IGUAL) ...
     st.markdown("Faça o upload de um relatório mensal ou trimestral de uma gestora para que a IA extraia as principais visões de alocação.")
     
     nome_gestora_input = st.text_input("Nome da Gestora (ex: BlackRock, PIMCO, Verde Asset):")
-    arquivo_pdf = st.file_uploader("Selecione o arquivo PDF:", type="pdf")
+    arquivo_pdf = st.uploader("Selecione o arquivo PDF:", type="pdf")
 
     if st.button("Analisar Relatório") and arquivo_pdf and nome_gestora_input:
         with st.spinner("Lendo o PDF e consultando a IA... Isso pode levar um minuto."):
@@ -136,7 +147,6 @@ with tab2:
                         df_extraido = pd.DataFrame(dados_extraidos)
                         st.dataframe(df_extraido, use_container_width=True)
                         
-                        # --- SEÇÃO ADICIONADA (OPÇÃO 1) ---
                         st.subheader("Pronto para Copiar para o CSV")
                         csv_output = df_extraido.to_csv(index=False, header=False, lineterminator='\n')
                         st.text_area(
@@ -149,7 +159,6 @@ with tab2:
                             "[dados_mercado.csv](https://github.com/SEU_USUARIO/painel-alocacao/edit/main/dados_mercado.csv) "
                             "no GitHub para que o dashboard seja atualizado."
                         )
-                        # --- FIM DA SEÇÃO ADICIONADA ---
 
                     except json.JSONDecodeError:
                         st.error("A IA retornou um formato que não é um JSON válido. Tente novamente ou ajuste o prompt.")
@@ -161,3 +170,62 @@ with tab2:
                     st.error("Não foi possível obter uma resposta da IA.")
             else:
                 st.error("Não foi possível extrair texto do PDF. O arquivo pode ser uma imagem.")
+
+
+# --- ABA 3: ANÁLISE HISTÓRICA (NOVA SEÇÃO) ---
+with tab3:
+    st.header("Evolução das Visões ao Longo do Tempo")
+    st.markdown("Selecione uma sub-classe de ativo para ver como as opiniões das gestoras mudaram.")
+
+    # Filtro para selecionar a sub-classe de ativo
+    sub_classe_selecionada = st.selectbox(
+        "Selecione a Sub-Classe de Ativo:",
+        options=sorted(df['sub_classe_ativo'].unique())
+    )
+
+    if sub_classe_selecionada:
+        df_historico = df[df['sub_classe_ativo'] == sub_classe_selecionada].copy()
+
+        if not df_historico.empty:
+            # Mapeia visões para valores numéricos para plotagem
+            mapa_valores_visao = {'Overweight': 3, 'Neutral': 2, 'Underweight': 1}
+            df_historico['valor_visao'] = df_historico['visao'].map(mapa_valores_visao)
+
+            # Cria o gráfico de linha
+            fig_historico = px.line(
+                df_historico,
+                x='data_referencia',
+                y='valor_visao',
+                color='gestora',
+                markers=True, # Adiciona marcadores para cada ponto de dado
+                labels={
+                    "data_referencia": "Data de Referência",
+                    "valor_visao": "Visão",
+                    "gestora": "Gestora"
+                },
+                title=f"Histórico de Visões para: {sub_classe_selecionada}"
+            )
+
+            # Customiza o eixo Y para mostrar os rótulos de texto em vez de números
+            fig_historico.update_layout(
+                yaxis=dict(
+                    tickmode='array',
+                    tickvals=[1, 2, 3],
+                    ticktext=['Underweight', 'Neutral', 'Overweight'],
+                    range=[0.5, 3.5] # Ajusta o range para dar um espaçamento melhor
+                )
+            )
+            
+            # Melhora o hover text para mostrar a visão real, não o número
+            # É preciso reordenar o dataframe para garantir que o customdata corresponda aos pontos
+            df_historico = df_historico.sort_values(by=['gestora', 'data_referencia'])
+            fig_historico.update_traces(
+                customdata=df_historico['visao']
+            )
+            fig_historico.update_traces(
+                 hovertemplate="<b>Data:</b> %{x|%d-%b-%Y}<br><b>Visão:</b> %{customdata}<extra></extra>"
+            )
+
+            st.plotly_chart(fig_historico, use_container_width=True)
+        else:
+            st.warning("Nenhum dado histórico encontrado para a seleção.")
