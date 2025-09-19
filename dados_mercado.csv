@@ -1,31 +1,15 @@
-data_referencia,gestora,classe_ativo,sub_classe_ativo,visao,resumo_tese,frase_justificativa
-2025-09-01,BlackRock,Ações,EUA,Overweight,"Crescimento resiliente e liderança em tecnologia, apesar dos riscos com juros.",
-2025-09-01,BlackRock,Ações,Europa,Neutral,"Avaliações atrativas, mas com riscos geopolíticos e de crescimento.",
-2025-09-01,BlackRock,Renda Fixa,Global High Grade,Underweight,"Juros ainda restritivos oferecem pouco upside para os títulos de alta qualidade.",
-2025-09-01,PIMCO,Ações,EUA,Neutral,"Seletividade é chave. Prefere setores de valor em detrimento de crescimento.",
-2025-09-01,PIMCO,Renda Fixa,Global High Grade,Overweight,"Pico no ciclo de juros torna os títulos de longo prazo atrativos.",
-2025-09-01,PIMCO,Renda Fixa,Mercados Emergentes,Overweight,"Juros reais elevados e desinflação criam oportunidade.",
-2025-09-01,JP Morgan,Ações,EUA,Overweight,"Apesar da volatilidade, a economia americana se mostra forte.",
-2025-09-01,JP Morgan,Ações,Europa,Underweight,"Incerteza energética e inflação persistente pesam sobre as perspectivas.",
-2025-09-01,Verde Asset,Ações,Brasil,Neutral,"Cenário fiscal doméstico exige cautela, apesar do valuation baixo.",
-2025-09-01,Verde Asset,Juros,Brasil,Overweight,"Prêmio de risco na curva de juros longa parece exagerado.",
-2023-10-27,Standard Chartered,Ações,Global,Overweight,"Fundamentos e modelos quantitativos são otimistas com ações no horizonte de 6 a 12 meses, apesar de riscos de curto prazo.",
-2023-10-27,Standard Chartered,Ações,EUA,Neutral,"Recomenda-se reduzir a exposição excessiva em ações dos EUA e rotacionar para ações da Ásia, exceto Japão.",
-2023-10-27,Standard Chartered,Ações,Ásia (exceto Japão),Overweight,"Ações na Ásia (exceto Japão) são a principal preferência, devido à fraqueza do USD e avaliações relativamente baratas.",
-2023-10-27,Standard Chartered,Ações,Japão,Neutral,Ações do Japão permanecem como posições principais.,
-2023-10-27,Standard Chartered,Ações,Europa,Neutral,Ações da Europa permanecem como posições principais.,
-2023-10-27,Standard Chartered,Renda Fixa,Bônus de Moeda Local de Mercado Emergente,Overweight,"Priorizar títulos de moeda local de mercados emergentes e capturar rendimentos em títulos em USD, focando em maturidades médias.",
-2023-10-27,Standard Chartered,Renda Fixa,Títulos Corporativos,Underweight,"Prêmios de rendimento apertados em títulos corporativos indicam que a estratégia preferida é proteger os rendimentos por mais tempo, preferindo títulos de alta qualidade ao invés de caixa.",
-2023-10-27,Standard Chartered,Moedas,USD,Underweight,"Espera-se que o índice USD não ultrapasse os 100 de forma sustentável, com ganhos em JPY e GBP levando a uma queda no USD no horizonte de 6 a 12 meses.",
-2023-10-27,Standard Chartered,Ações,Tecnologia EUA,Neutral,Considerar uma posição oportunista no setor de tecnologia dos EUA após uma retração de 5%.,
-2023-10-27,Standard Chartered,Ações,Bancos EUA,Overweight,"Os cortes de taxas do Fed devem ser administráveis se não houver surpresas significativas, com menor taxa apoiando um pouso suave na economia.",
-2023-10-27,Standard Chartered,Ações,Industriais Europa,Overweight,"A Alemanha lidera a Europa em planos para aumentar o investimento em infraestrutura e defesa, apoiando setores como aeroespacial, defesa, equipamentos elétricos e construção.",
-2023-10-27,Standard Chartered,Ações,Coréia do Sul,Overweight,"As ações da Coréia do Sul negociam com um desconto significativo em relação à Ásia (exceto Japão), com expectativa de melhor governança corporativa e apoio de influxos de fundos.",
-2023-10-27,Standard Chartered,Ações,Empresas estatais chinesas de alto dividendo (não financeiras),Overweight,Sua exposição predominantemente doméstica significa menos exposição direta a preocupações comerciais e mais benefícios dos planos de estímulo do governo.,
-2023-10-27,Standard Chartered,Ações,Tecnologia de Hong Kong,Overweight,"Surpresas positivas nos lucros das principais empresas de tecnologia apoiam as perspectivas de crescimento, com o progresso na adoção de IA e o apoio do governo ao desenvolvimento de tecnologia.",
-2023-10-27,Standard Chartered,Renda Fixa,Títulos do Tesouro Protegidos contra Inflação (TIPS) dos EUA,Overweight,"A relação risco-recompensa ainda é atraente, com a inflação ao consumidor e ao produtor dos EUA provavelmente aumentando no curto prazo.",
-2023-10-27,Standard Chartered,Renda Fixa,Gilts do Reino Unido (não cobertos),Overweight,Favorece a alta de rendimento nominal em Gilts sobre outros títulos do governo de mercados desenvolvidos.,
-2023-10-27,Standard Chartered,Renda Fixa,High Yield de Curta Duração dos EUA,Overweight,Oferece rendimentos absolutos atraentes e baixas taxas de inadimplência esperadas.,
-2023-10-27,Standard Chartered,Renda Fixa,Bônus de Moeda Local da Ásia de Mercado Emergente,Underweight,O balanço risco-recompensa parece desfavorável em comparação com outras regiões de mercados emergentes.,
-2025-09-19,City,Renda Fixa,Global,Underweight,A postura desafiadora do Fed em relação ao seu duplo mandato e o potencial de re-aceleração da inflação justificam a posição de duration underweight.,
-2025-09-19,City,Ações,Global,Neutral,"Embora construtiva sobre o outlook de longo prazo para temas como IA e desregulamentação, a gestora prefere nomes de alta qualidade devido à inflação e crescimento lento.",
+data_referencia,gestora,regiao,classe_ativo_geral,sub_classe_ativo,visao,resumo_tese,frase_justificativa
+2025-06-01,BlackRock,EUA,Ações,Ações EUA,Overweight,"Crescimento robusto no setor de tecnologia justifica a exposição.","Apesar dos juros, o setor de tecnologia continua mostrando resiliência e poder de lucro."
+2025-09-01,BlackRock,EUA,Ações,Ações EUA,Overweight,"Mantemos a visão otimista, com foco em empresas de alta qualidade.","Acreditamos que empresas com balanços sólidos navegarão melhor o cenário atual."
+2025-09-01,JP Morgan,EUA,Ações,Ações EUA,Neutral,"Valuations estão esticados, sugerindo cautela e seletividade.","O prêmio de risco para ações americanas diminuiu, tornando-nos mais seletivos."
+2025-09-01,Goldman Sachs,EUA,Ações,Ações EUA,Overweight,"Inovação em IA continua a ser um driver de crescimento secular.","A revolução da inteligência artificial está apenas no começo e deve sustentar múltiplos."
+2025-06-01,PIMCO,EUA,Renda Fixa,Títulos do Tesouro Americano,Overweight,"Pico do ciclo de juros favorece posições em títulos longos.","Com a inflação arrefecendo, o Fed deve encerrar o ciclo de alta, beneficiando a renda fixa."
+2025-09-01,PIMCO,EUA,Renda Fixa,Títulos do Tesouro Americano,Overweight,"Atrativos rendimentos reais em títulos de longo prazo.","Os títulos do tesouro oferecem um dos melhores retornos ajustados ao risco no momento."
+2025-09-01,BlackRock,EUA,Renda Fixa,Crédito Corporativo,Neutral,"Spreads de crédito apertados oferecem pouco espaço para ganhos.","Preferimos exposição a títulos do governo em detrimento do crédito corporativo no momento."
+2025-09-01,BlackRock,Europa,Ações,Ações Europeias,Neutral,"Riscos geopolíticos e crescimento anêmico limitam o potencial de alta.","Apesar do valuation atrativo, o cenário macroeconômico na Europa exige cautela."
+2025-09-01,JP Morgan,Europa,Ações,Ações Europeias,Underweight,"Crise energética e inflação persistente devem pesar nos lucros.","Vemos riscos de baixa para as projeções de lucro das empresas europeias."
+2025-06-01,Verde Asset,Brasil,Ações,Bolsa Brasileira,Neutral,"Cenário fiscal doméstico inspira cautela, apesar do valuation baixo.","O risco fiscal continua sendo o principal obstáculo para uma alocação maior em ações brasileiras."
+2025-09-01,Verde Asset,Brasil,Ações,Bolsa Brasileira,Overweight,"Melhora marginal no cenário fiscal e juros em queda abrem oportunidade.","A combinação de juros em queda e valuations atrativos nos torna mais otimistas com a bolsa local."
+2025-09-01,Verde Asset,Brasil,Juros,Juros Nominais (Pré-fixados),Underweight,"Prêmio de risco na curva de juros já foi bastante comprimido.","Após o recente rali, vemos pouca assimetria para posições tomadas em juros pré-fixados."
+2025-09-01,PIMCO,Mercados Emergentes,Renda Fixa,Dívida EM (Moeda Local),Overweight,"Juros reais elevados e desinflação criam oportunidade única.","Muitos bancos centrais emergentes estão à frente no ciclo, o que torna sua dívida atrativa."
+2025-09-01,BlackRock,Mercados Emergentes,Ações,Ações Emergentes (ex-China),Neutral,"Crescimento em mercados como Índia e Brasil é promissor, mas dólar forte é um empecilho.","A seletividade é crucial; vemos bolsões de valor em emergentes, mas o cenário global limita o otimismo."
