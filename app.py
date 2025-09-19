@@ -63,6 +63,7 @@ def extrair_visoes_com_ia(texto_relatorio, nome_gestora):
 df_visoes = carregar_dados_visoes()
 df_kpis = carregar_kpis()
 df_riscos = carregar_riscos_oportunidades()
+detalhes_ativos = carregar_detalhes_ativos()
 
 # --- LÓGICA DE NAVEGAÇÃO E ESTADO ---
 # Inicializa o estado da sessão se ainda não existir
